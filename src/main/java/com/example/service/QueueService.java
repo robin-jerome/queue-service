@@ -2,7 +2,8 @@ package com.example.service;
 
 import java.util.Optional;
 
-import com.example.message.QueueMessage;import com.example.message.QueueMessage;
+import com.example.message.QueueMessage;
+import com.example.message.QueueMessageFactory;
 
 public interface QueueService {
 

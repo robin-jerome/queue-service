@@ -2,7 +2,7 @@ package com.example.service;
 
 import java.util.Optional;
 
-import com.example.message.QueueMessage;import com.example.message.QueueMessage;
+import com.example.message.QueueMessage;
 
 public class FileQueueService implements QueueService {
     @Override
