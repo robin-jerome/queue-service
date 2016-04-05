@@ -2,21 +2,19 @@ package com.example.message;
 
 import java.util.UUID;
 
-import org.joda.time.DateTime;
-
 import lombok.Getter;
 
 @Getter
 public class ManagedQueueMessage extends QueueMessage {
-    protected int priorAttemptCount = 0;
-    protected DateTime visibleFrom;
-    // Should be fetched from flavours
-    private static final long VISIBILITY_TIMEOUT_MS = 2000;
+    protected int priorAttemptCount;
+    protected long visibleFrom;
+    // Should be fetched from flavours - Lower values for testing
+    public static final long VISIBILITY_TIMEOUT_MILLIS = 100;
 
     ManagedQueueMessage(String messageBody,
                         String receiptId,
                         int priorAttemptCount,
-                        DateTime visibleFrom) {
+                        long visibleFrom) {
         super(messageBody, receiptId);
         this.priorAttemptCount = priorAttemptCount;
         this.visibleFrom = visibleFrom;
@@ -27,21 +25,33 @@ public class ManagedQueueMessage extends QueueMessage {
     }
 
     public boolean isUnread() {
-        return priorAttemptCount == 0 && visibleFrom == null;
+        return priorAttemptCount == 0 && visibleFrom == 0L;
     }
 
-    public boolean isInvisible() {
-        return !isUnread() && visibleFrom.plus(VISIBILITY_TIMEOUT_MS).isBeforeNow();
+    private boolean hasExpiredVisibility() {
+        long elapsedTime = System.currentTimeMillis() - visibleFrom;
+        if (elapsedTime > VISIBILITY_TIMEOUT_MILLIS) {
+            System.out.println(messageBody + " is no longer invisible");
+            return true;
+        } else {
+            System.out.println(messageBody + " is invisible for another " + (VISIBILITY_TIMEOUT_MILLIS - elapsedTime) + " ms");
+            return false;
+        }
     }
 
     public boolean isConsumable() {
-        return isUnread() || !isInvisible();
+        if (isUnread()) {
+            return true;
+        } else {
+            return hasExpiredVisibility();
+        }
     }
 
     public void markAsConsumed() {
-        visibleFrom = DateTime.now();
+        visibleFrom = System.currentTimeMillis();
         priorAttemptCount++;
         this.receiptId = UUID.randomUUID().toString();
+        System.out.println("Consuming message with body " + this.messageBody + " and receipt id " + this.receiptId);
     }
 
 }

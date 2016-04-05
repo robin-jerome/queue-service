@@ -29,6 +29,7 @@ public class InMemoryQueueService implements QueueService {
             Optional<ManagedQueueMessage> optionalMessage = queues.get(queueName).stream()
                     .filter(ManagedQueueMessage::isConsumable)
                     .findFirst();
+
             if (optionalMessage.isPresent()) {
                 ManagedQueueMessage message = optionalMessage.get();
                 message.markAsConsumed();
