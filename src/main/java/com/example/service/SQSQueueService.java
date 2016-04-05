@@ -14,7 +14,6 @@ public class SQSQueueService implements QueueService {
     private static final String QUEUE_END_POINT = "https://sqs.eu-west-1.amazonaws.com";
     // This property should come from flavours
     private static final String ACCOUNT_NUMBER = "123456789012";
-    private QueueMessageFactory queueMessageFactory = new QueueMessageFactory();
 
     public SQSQueueService(AmazonSQSClient sqsClient) {
         this.sqsClient = sqsClient;

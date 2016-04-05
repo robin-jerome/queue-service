@@ -5,7 +5,7 @@ import java.io.Serializable;
 import lombok.Getter;
 
 @Getter
-public class QueueMessage implements Serializable, Cloneable {
+public class QueueMessage implements Serializable {
     protected String receiptId;
     protected String messageBody;
 
@@ -14,14 +14,7 @@ public class QueueMessage implements Serializable, Cloneable {
         this.receiptId = receiptId;
     }
 
-    @Override
-    public QueueMessage clone() {
-        try {
-            return (QueueMessage) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new IllegalStateException(
-                    "Got a CloneNotSupportedException from Object.clone() "
-                            + "even though we're Cloneable!", e);
-        }
+    public QueueMessage copy() {
+        return new QueueMessage(messageBody, receiptId);
     }
 }

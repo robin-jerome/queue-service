@@ -33,7 +33,7 @@ public class InMemoryQueueService implements QueueService {
             if (optionalMessage.isPresent()) {
                 ManagedQueueMessage message = optionalMessage.get();
                 message.markAsConsumed();
-                return Optional.of(message.clone());
+                return Optional.of(message.copy());
             } else {
                 return Optional.empty();
             }
