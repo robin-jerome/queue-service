@@ -1,8 +1,5 @@
 package com.example.service;
 
-import com.example.message.QueueMessage;
-import com.google.common.io.Files;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -10,6 +7,12 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.Charset;
 import java.util.*;
+
+import com.example.message.QueueMessage;
+import com.example.message.QueueMessageFactory;
+import com.example.util.LineOrder;
+import com.example.util.MessageSerializationUtils;
+import com.google.common.io.Files;
 
 public class FileQueueService implements QueueService {
 
@@ -40,7 +43,8 @@ public class FileQueueService implements QueueService {
         try {
             if (acquireQueueLock(queueName, MAX_LOCK_WAIT_MILLIS)) {
                 System.out.println("Lock acquired to push to queue " + queueName);
-                Files.append(message + System.lineSeparator(), new File(toQueueMessagesFilePath(queueName)), Charset.forName("UTF-8"));
+                QueueMessage queueMessage = QueueMessageFactory.createManagedQueueMessage(message);
+                appendMessageToQueue(queueName, queueMessage);
             } else {
                 System.err.println("Lock to push to queue " + queueName + " was not acquired ");
             }
@@ -51,13 +55,67 @@ public class FileQueueService implements QueueService {
         }
     }
 
+    private void appendMessageToQueue(String queueName, QueueMessage queueMessage) throws IOException {
+        String messageString = MessageSerializationUtils.toString(queueMessage);
+        Files.append(messageString + System.lineSeparator(), new File(toQueueMessagesFilePath(queueName)), Charset.forName("UTF-8"));
+    }
+
     @Override
     public Optional<QueueMessage> pull(String queueName) {
-        return null;
+        File msgFile = checkIfQueueExists(queueName);
+        try {
+            if (acquireQueueLock(queueName, MAX_LOCK_WAIT_MILLIS)) {
+                System.out.println("Lock acquired to pull from queue " + queueName);
+                LineOrder lineOrder = MessageSerializationUtils.getNewLineOrderForPull(msgFile);
+                if (lineOrder.isModified()) {
+                    // Pull has a message - return the superclass
+                    msgFile.delete();
+                    msgFile = new File(toQueueMessagesFilePath(queueName));
+                    msgFile.createNewFile();
+                    MessageSerializationUtils.recreateQueueFile(msgFile, lineOrder, true); // Include modified element
+                    // Update the file with new lines and delete oldLines
+                    return Optional.of(lineOrder.getModifiedMessageOpt().get().copy());
+                }
+            } else {
+                System.err.println("Lock to pull to queue " + queueName + " was not acquired ");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            releaseQueueLock(queueName);
+        }
+        return Optional.empty();
+    }
+
+    private File checkIfQueueExists(String queueName) {
+        if (!new File(toQueueMessagesFilePath(queueName)).exists()) {
+            throw new RuntimeException("Queue with name " + queueName + " does not exist");
+        } else {
+            return new File(toQueueMessagesFilePath(queueName));
+        }
     }
 
     @Override
     public void delete(String queueName, String messageReceipt) {
+        File msgFile = checkIfQueueExists(queueName);
+        try {
+            if (acquireQueueLock(queueName, MAX_LOCK_WAIT_MILLIS)) {
+                System.out.println("Lock acquired to delete from queue " + queueName);
+                LineOrder lineOrder = MessageSerializationUtils.getNewLineOrderForDelete(msgFile, messageReceipt);
+                if (lineOrder.isModified()) {
+                    msgFile.delete();
+                    msgFile = new File(toQueueMessagesFilePath(queueName));
+                    msgFile.createNewFile();
+                    MessageSerializationUtils.recreateQueueFile(msgFile, lineOrder, false); // Not include modified element
+                }
+            } else {
+                System.err.println("Lock to delete from queue " + queueName + " was not acquired ");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            releaseQueueLock(queueName);
+        }
 
     }
 
