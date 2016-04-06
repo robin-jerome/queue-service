@@ -3,10 +3,10 @@ package com.example.service;
 import org.junit.After;
 import org.junit.Test;
 
+public class FileQueueServiceTest extends GenericQueueServiceTest {
 
-public class InMemoryQueueServiceTest extends GenericQueueServiceTest {
-    public InMemoryQueueServiceTest() {
-        super(new InMemoryQueueService());
+    public FileQueueServiceTest() {
+        super(new FileQueueService());
     }
 
     @After
