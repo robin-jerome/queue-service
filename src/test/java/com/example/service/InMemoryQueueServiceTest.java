@@ -35,4 +35,9 @@ public class InMemoryQueueServiceTest extends GenericQueueServiceTest {
         super.pulledItemsBecomeVisibleAfterTimeout();
     }
 
+    @Test(expected = RuntimeException.class)
+    public void pullFromNonExistingQueueThrowsException() {
+        super.pullFromNonExistingQueueThrowsException();
+    }
+
 }

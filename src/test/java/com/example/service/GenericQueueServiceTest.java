@@ -62,4 +62,8 @@ public class GenericQueueServiceTest {
         String receiptId = msgOpt.get().getReceiptId();
         receiptIds.add(receiptId);
     }
+
+    protected void pullFromNonExistingQueueThrowsException() {
+        service.pull(TEST_QUEUE_NAME + System.currentTimeMillis());
+    }
 }

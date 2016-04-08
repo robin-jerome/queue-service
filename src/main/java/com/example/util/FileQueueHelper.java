@@ -7,9 +7,11 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import com.example.message.ManagedQueueMessage;
+import com.example.message.QueueMessage;
 import com.google.common.io.Files;
 
-public class MessageSerializationUtils {
+public class FileQueueHelper {
+    private static final Charset CHARSET = Charset.forName("UTF-8");
 
     /* Convert Base64 encoded string to object */
     public static Object fromString(String sourceStr) {
@@ -32,7 +34,7 @@ public class MessageSerializationUtils {
     }
 
     /* Convert object to Base64 encoded string */
-    public static String toString(Serializable obj) {
+    public static String messageToString(Serializable obj) {
         ObjectOutputStream oos = null;
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -52,59 +54,59 @@ public class MessageSerializationUtils {
         }
     }
 
-    public static LineOrder getNewLineOrderForPull(File msgFile) {
-        LineOrder lineOrder = null;
+    public static MessageOrder getMessageOrderPostPull(File msgFile) {
+        MessageOrder messageOrder = null;
         try (BufferedReader br = new BufferedReader(new FileReader(msgFile))) {
-            lineOrder = new LineOrder();
+            messageOrder = new MessageOrder();
             String line;
             while ((line = br.readLine()) != null) {
-                lineOrder = getUpdatedLineOrderForPull(lineOrder, line);
+                messageOrder = getUpdatedLineOrderForPull(messageOrder, line);
             }
         } catch (IOException e) {
             throw new RuntimeException("Exception while pull or delete of message", e);
         } finally {
-            return lineOrder;
+            return messageOrder;
         }
     }
 
-    private static LineOrder getUpdatedLineOrderForPull(LineOrder lineOrder, String line) {
-        if (lineOrder.getModifiedMessageOpt().isPresent()) {
+    private static MessageOrder getUpdatedLineOrderForPull(MessageOrder messageOrder, String line) {
+        if (messageOrder.getModifiedMessageOpt().isPresent()) {
             // Message for pull has been identified
-            lineOrder.getAfter().add(line);
+            messageOrder.getAfter().add(line);
         } else {
-            ManagedQueueMessage message = (ManagedQueueMessage) MessageSerializationUtils.fromString(line);
+            ManagedQueueMessage message = (ManagedQueueMessage) FileQueueHelper.fromString(line);
             if (message.isConsumable()) {
                 message.markAsConsumed();
-                lineOrder.setModifiedMessageOpt(Optional.of(message));
+                messageOrder.setModifiedMessageOpt(Optional.of(message));
             } else {
-                lineOrder.getBefore().add(line);
+                messageOrder.getBefore().add(line);
             }
         }
-        return lineOrder;
+        return messageOrder;
     }
 
-    private static LineOrder getUpdatedLineOrderForDelete(LineOrder lineOrder, String line, String messageReceipt) {
-        if (lineOrder.getModifiedMessageOpt().isPresent()) {
+    private static MessageOrder getUpdatedLineOrderForDelete(MessageOrder messageOrder, String line, String messageReceipt) {
+        if (messageOrder.getModifiedMessageOpt().isPresent()) {
             // Message for delete has been identified
-            lineOrder.getAfter().add(line);
+            messageOrder.getAfter().add(line);
         } else {
-            ManagedQueueMessage message = (ManagedQueueMessage) MessageSerializationUtils.fromString(line);
+            ManagedQueueMessage message = (ManagedQueueMessage) FileQueueHelper.fromString(line);
             if (message.getReceiptId().equals(messageReceipt)) { // Equality of receipt id
-                lineOrder.setModifiedMessageOpt(Optional.of(message));
+                messageOrder.setModifiedMessageOpt(Optional.of(message));
             } else {
-                lineOrder.getBefore().add(line);
+                messageOrder.getBefore().add(line);
             }
         }
-        return lineOrder;
+        return messageOrder;
     }
 
-    public static void recreateQueueFile(File msgFile, LineOrder lineOrder, boolean includeModifiedMessage) {
+    public static void pushMessagesInQueueFile(File msgFile, MessageOrder messageOrder, boolean includeModifiedMessage) {
         Stream combinedStream;
         if (includeModifiedMessage) {
-            combinedStream = Stream.concat(lineOrder.getBefore().stream(),
-                    Stream.concat(Stream.of(toString(lineOrder.getModifiedMessageOpt().get())), lineOrder.getAfter().stream()));
+            combinedStream = Stream.concat(messageOrder.getBefore().stream(),
+                    Stream.concat(Stream.of(messageToString(messageOrder.getModifiedMessageOpt().get())), messageOrder.getAfter().stream()));
         } else {
-            combinedStream = Stream.concat(lineOrder.getBefore().stream(), lineOrder.getAfter().stream());
+            combinedStream = Stream.concat(messageOrder.getBefore().stream(), messageOrder.getAfter().stream());
         }
         combinedStream.forEach(l -> {
             try {
@@ -115,18 +117,23 @@ public class MessageSerializationUtils {
         });
     }
 
-    public static LineOrder getNewLineOrderForDelete(File msgFile, String messageReceipt) {
-        LineOrder lineOrder = null;
+    public static MessageOrder getNewLineOrderForDelete(File msgFile, String messageReceipt) {
+        MessageOrder messageOrder = null;
         try (BufferedReader br = new BufferedReader(new FileReader(msgFile))) {
-            lineOrder = new LineOrder();
+            messageOrder = new MessageOrder();
             String line;
             while ((line = br.readLine()) != null) {
-                lineOrder = getUpdatedLineOrderForDelete(lineOrder, line, messageReceipt);
+                messageOrder = getUpdatedLineOrderForDelete(messageOrder, line, messageReceipt);
             }
         } catch (IOException e) {
             throw new RuntimeException("Exception while pull or delete of message", e);
         } finally {
-            return lineOrder;
+            return messageOrder;
         }
+    }
+
+    public static void pushToFileQueue(QueueMessage queueMessage, File queueFile) throws IOException {
+        String messageString = messageToString(queueMessage);
+        Files.append(messageString + System.lineSeparator(), queueFile, CHARSET);
     }
 }

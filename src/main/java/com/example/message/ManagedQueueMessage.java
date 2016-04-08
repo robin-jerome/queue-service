@@ -11,15 +11,6 @@ public class ManagedQueueMessage extends QueueMessage {
     // Should be fetched from flavours - Lower values for testing
     public static final long VISIBILITY_TIMEOUT_MILLIS = 100;
 
-    ManagedQueueMessage(String messageBody,
-                        String receiptId,
-                        int priorAttemptCount,
-                        long visibleFrom) {
-        super(messageBody, receiptId);
-        this.priorAttemptCount = priorAttemptCount;
-        this.visibleFrom = visibleFrom;
-    }
-
     ManagedQueueMessage(String messageBody) {
         super(messageBody, null);
     }

@@ -11,7 +11,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class LineOrder {
+public class MessageOrder {
     List<String> before = new ArrayList<>();
     List<String> after = new ArrayList<>();
     Optional<ManagedQueueMessage> modifiedMessageOpt = Optional.empty();
