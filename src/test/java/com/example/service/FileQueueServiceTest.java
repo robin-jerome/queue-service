@@ -10,15 +10,9 @@ public class FileQueueServiceTest extends GenericQueueServiceTest {
     }
 
     @After
-    public void setUp() {
-        super.setUp();
-        service = new FileQueueService();
-    }
-
-    @After
     public void tearDown() {
-        super.tearDown();
-        receiptQueueNameMap.values().stream().distinct().forEach(queueName -> {
+        // Delete files corresponding to the queues
+        ((FileQueueService) service).availableQueues.stream().forEach(queueName -> {
             ((FileQueueService) service).deleteQueue(queueName);
         });
     }
@@ -51,5 +45,10 @@ public class FileQueueServiceTest extends GenericQueueServiceTest {
     @Test
     public void pushingToNonExistentQueueCreatesQueue() throws Exception {
         super.pushingToNonExistentQueueCreatesQueue();
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void deletingNonExistingMessageThrowsException() throws Exception {
+        super.deletingNonExistingMessageThrowsException();
     }
 }

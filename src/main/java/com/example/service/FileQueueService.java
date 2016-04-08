@@ -21,7 +21,7 @@ public class FileQueueService implements QueueService {
     private static Map<String, FileLock> queueLocks = new HashMap<>();
 
     // To prevent repetitive checks for existence of queue by name
-    Set<String> availableQueues = new HashSet<>();
+    protected Set<String> availableQueues = new HashSet<>();
 
     public FileQueueService() {
         createBaseDirectoryIfNotExists();
@@ -46,11 +46,11 @@ public class FileQueueService implements QueueService {
 
     @Override
     public Optional<QueueMessage> pull(String queueName) {
-        File msgFile = checkIfQueueExists(queueName);
+        File msgFile = getQueueMessagesFile(queueName);
         try {
             if (acquireQueueLock(queueName, MAX_LOCK_WAIT_MILLIS)) {
                 System.out.println("Lock acquired to pull from queue " + queueName);
-                MessageOrder messageOrder = FileQueueHelper.getMessageOrderPostPull(msgFile);
+                MessageOrder messageOrder = FileQueueHelper.getMessageOrderAfterPull(msgFile);
                 if (messageOrder.isModified()) {
                     msgFile = recreateMessageFileForQueue(queueName, msgFile);
                     FileQueueHelper.pushMessagesInQueueFile(msgFile, messageOrder, true); // Include modified message
@@ -61,7 +61,7 @@ public class FileQueueService implements QueueService {
                 System.err.println("Lock to pull to queue " + queueName + " was not acquired ");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Runtime Exception while deleting from queue", e);
         } finally {
             releaseQueueLock(queueName);
         }
@@ -70,20 +70,23 @@ public class FileQueueService implements QueueService {
 
     @Override
     public void delete(String queueName, String messageReceipt) {
-        File msgFile = checkIfQueueExists(queueName);
+        File msgFile = getQueueMessagesFile(queueName);
         try {
             if (acquireQueueLock(queueName, MAX_LOCK_WAIT_MILLIS)) {
                 System.out.println("Lock acquired to delete from queue " + queueName);
-                MessageOrder messageOrder = FileQueueHelper.getNewLineOrderForDelete(msgFile, messageReceipt);
+                MessageOrder messageOrder = FileQueueHelper.getNewMessageOrderAfterDelete(msgFile, messageReceipt);
                 if (messageOrder.isModified()) {
                     msgFile = recreateMessageFileForQueue(queueName, msgFile);
                     FileQueueHelper.pushMessagesInQueueFile(msgFile, messageOrder, false); // Not include modified element
+                } else {
+                    // Expected message was not present in the queue
+                    throw new RuntimeException("Message with receipt " + messageReceipt + " does not exist in queue " + queueName);
                 }
             } else {
                 System.err.println("Lock to delete from queue " + queueName + " was not acquired ");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Runtime Exception while deleting from queue", e);
         } finally {
             releaseQueueLock(queueName);
         }
@@ -97,7 +100,7 @@ public class FileQueueService implements QueueService {
         }
     }
 
-    private File checkIfQueueExists(String queueName) {
+    private File getQueueMessagesFile(String queueName) {
         if (!new File(toQueueMessagesFilePath(queueName)).exists()) {
             throw new RuntimeException("Queue with name " + queueName + " does not exist");
         } else {
@@ -106,21 +109,28 @@ public class FileQueueService implements QueueService {
     }
 
     private void createQueueIfNotExists(String queueName) {
+        // Already used queue
         File queueDir = new File(toQueueDirectoryPath(queueName));
-        if ((!availableQueues.contains(queueName) && !queueDir.exists()) || !queueDir.isDirectory()) {
-            if (queueDir.mkdir()) {
-                File messagesFile = new File(toQueueMessagesFilePath(queueName));
-                try {
-                    messagesFile.createNewFile();
-                    availableQueues.add(queueName);
-                    queueLocks.put(queueName, null);
-                } catch (IOException e) {
-                    throw new RuntimeException("Message file creation for queue " + queueName + " has failed");
-                }
-            } else {
-                throw new RuntimeException("Queue directory creation for queue " + queueName + " has failed");
+        if (availableQueues.contains(queueName)) return;
+        // Queue directory structure exists
+        if (queueDir.exists() && queueDir.isDirectory() && new File(toQueueMessagesFilePath(queueName)).exists()) {
+            availableQueues.add(queueName);
+            queueLocks.put(queueName, null);
+            return;
+        } else {
+            try {
+                recreateQueueDirectory(queueDir, queueName);
+                availableQueues.add(queueName);
+                queueLocks.put(queueName, null);
+            } catch (IOException e) {
+                throw new RuntimeException("Queue directory creation for queue " + queueName + " has failed", e);
             }
         }
+    }
+
+    private boolean recreateQueueDirectory(File queueDir, String queueName) throws IOException {
+        FileQueueHelper.deleteRecursively(queueDir);
+        return queueDir.mkdir() && new File(toQueueMessagesFilePath(queueName)).createNewFile();
     }
 
     private File recreateMessageFileForQueue(String queueName, File msgFile) throws IOException {

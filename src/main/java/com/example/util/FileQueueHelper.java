@@ -54,7 +54,7 @@ public class FileQueueHelper {
         }
     }
 
-    public static MessageOrder getMessageOrderPostPull(File msgFile) {
+    public static MessageOrder getMessageOrderAfterPull(File msgFile) {
         MessageOrder messageOrder = null;
         try (BufferedReader br = new BufferedReader(new FileReader(msgFile))) {
             messageOrder = new MessageOrder();
@@ -62,10 +62,9 @@ public class FileQueueHelper {
             while ((line = br.readLine()) != null) {
                 messageOrder = getUpdatedLineOrderForPull(messageOrder, line);
             }
+            return messageOrder;
         } catch (IOException e) {
             throw new RuntimeException("Exception while pull or delete of message", e);
-        } finally {
-            return messageOrder;
         }
     }
 
@@ -117,7 +116,7 @@ public class FileQueueHelper {
         });
     }
 
-    public static MessageOrder getNewLineOrderForDelete(File msgFile, String messageReceipt) {
+    public static MessageOrder getNewMessageOrderAfterDelete(File msgFile, String messageReceipt) {
         MessageOrder messageOrder = null;
         try (BufferedReader br = new BufferedReader(new FileReader(msgFile))) {
             messageOrder = new MessageOrder();
@@ -125,10 +124,9 @@ public class FileQueueHelper {
             while ((line = br.readLine()) != null) {
                 messageOrder = getUpdatedLineOrderForDelete(messageOrder, line, messageReceipt);
             }
+            return messageOrder;
         } catch (IOException e) {
             throw new RuntimeException("Exception while pull or delete of message", e);
-        } finally {
-            return messageOrder;
         }
     }
 
