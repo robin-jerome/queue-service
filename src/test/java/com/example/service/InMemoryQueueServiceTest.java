@@ -10,14 +10,8 @@ public class InMemoryQueueServiceTest extends GenericQueueServiceTest {
     }
 
     @After
-    public void setUp() {
-        super.setUp();
-        service = new FileQueueService();
-    }
-
-    @After
     public void tearDown() {
-        super.tearDown();
+        ((InMemoryQueueService) service).queues.clear();
     }
 
     @Test
@@ -50,4 +44,8 @@ public class InMemoryQueueServiceTest extends GenericQueueServiceTest {
         super.pushingToNonExistentQueueCreatesQueue();
     }
 
+    @Test(expected = RuntimeException.class)
+    public void deletingNonExistingMessageThrowsException() throws Exception {
+        super.deletingNonExistingMessageThrowsException();
+    }
 }

@@ -10,7 +10,7 @@ import com.example.message.QueueMessage;
 import com.example.message.QueueMessageFactory;
 
 public class InMemoryQueueService implements QueueService {
-    Map<String, ConcurrentLinkedQueue<ManagedQueueMessage>> queues = new HashMap<>();
+    protected Map<String, ConcurrentLinkedQueue<ManagedQueueMessage>> queues = new HashMap<>();
 
     @Override
     public void push(String queueName, String message) {
