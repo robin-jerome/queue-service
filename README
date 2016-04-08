@@ -1,1 +1,5 @@
-3 Implementations of a Queueing Service
+3 alternative Implementations of a Queueing Service
+
+1. In memory queueing service
+2. File based queuing service
+3. SQS based queueing service
