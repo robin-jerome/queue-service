@@ -40,4 +40,14 @@ public class InMemoryQueueServiceTest extends GenericQueueServiceTest {
         super.pullFromNonExistingQueueThrowsException();
     }
 
+    @Test(expected = RuntimeException.class)
+    public void deleteFromNonExistingQueueThrowsException() {
+        super.deleteFromNonExistingQueueThrowsException();
+    }
+
+    @Test
+    public void pushingToNonExistentQueueCreatesQueue() throws Exception {
+        super.pushingToNonExistentQueueCreatesQueue();
+    }
+
 }

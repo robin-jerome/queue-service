@@ -136,4 +136,13 @@ public class FileQueueHelper {
         String messageString = messageToString(queueMessage);
         Files.append(messageString + System.lineSeparator(), queueFile, CHARSET);
     }
+
+    public static void deleteRecursively(File fileOrDir) {
+        if (fileOrDir.isDirectory()) {
+            for (File f : fileOrDir.listFiles()) {
+                deleteRecursively(f);
+            }
+        }
+        fileOrDir.delete();
+    }
 }

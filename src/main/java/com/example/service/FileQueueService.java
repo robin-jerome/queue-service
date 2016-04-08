@@ -180,4 +180,8 @@ public class FileQueueService implements QueueService {
     private static String toQueueLockFilePath(String queueName) {
         return toQueueDirectoryPath(queueName) + File.separator + LOCK_FILE_NAME;
     }
+
+    void deleteQueue(String queueName) {
+        FileQueueHelper.deleteRecursively(new File(toQueueDirectoryPath(queueName)));
+    }
 }
